@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>pe.edu.nova.java</groupId>
+    <artifactId>nova-spring-boot-parent</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+
+    <name>Nova Platform Spring Boot Parent</name>
+    <description>Parent POM para proyectos Maven basados en el meta-framework Nova Platform con Spring Boot. Centraliza versiones de Java, Spring Boot, plugins y dependencias.</description>
+
+    <properties>
+        <!-- Java -->
+        <java.version>25</java.version>
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Nova Platform -->
+        <nova-bom.version>1.0.0</nova-bom.version>
+        <nova-starter.version>1.0.0</nova-starter.version>
+        <!-- Plugins -->
+        <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
+        <maven-surefire-plugin.version>3.5.3</maven-surefire-plugin.version>
+        <spring-boot-maven-plugin.version>4.0.5</spring-boot-maven-plugin.version>
+    </properties>
+
+    <!-- Gestión de dependencias — importa el BOM -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>pe.edu.nova.java</groupId>
+                <artifactId>nova-spring-boot-bom</artifactId>
+                <version>${nova-bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <!-- Dependencias heredadas por todos los proyectos hijos -->
+    <dependencies>
+        <!-- Meta-framework starter — Spring Boot + librerías internas -->
+        <dependency>
+            <groupId>pe.edu.nova.java.starters</groupId>
+            <artifactId>nova-spring-boot-starter</artifactId>
+            <version>${nova-starter.version}</version>
+        </dependency>
+
+        <!-- Test (Heredado por todos los hijos) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <!-- Plugins preconfigurados -->
+    <build>
+        <plugins>
+            <!-- Compilador Java -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven-compiler-plugin.version}</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                    <parameters>true</parameters>
+                </configuration>
+            </plugin>
+
+            <!-- Surefire para JUnit Platform -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven-surefire-plugin.version}</version>
+            </plugin>
+
+            <!-- Spring Boot Maven Plugin -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>${spring-boot-maven-plugin.version}</version>
+            </plugin>
+        </plugins>
+    </build>
+
+    <!-- Distribution Management — GitHub Packages -->
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <url>https://maven.pkg.github.com/OWNER/nova-spring-boot-parent</url>
+        </repository>
+    </distributionManagement>
+
+</project>
