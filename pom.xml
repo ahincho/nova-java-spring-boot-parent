@@ -27,6 +27,23 @@
         <spring-boot-maven-plugin.version>4.0.5</spring-boot-maven-plugin.version>
     </properties>
 
+    <!-- Repositorios de lectura — GitHub Packages de otros repos Nova.
+         Requiere credenciales (GitHub Packages exige auth incluso en repos
+         publicos); ver settings.xml generado por nova-setup-java (server id
+         "nova-packages-read", token NOVA_PACKAGES_READ_TOKEN). Se reutiliza
+         el mismo id en ambas entradas porque comparten las mismas credenciales.
+         Heredado por todos los proyectos hijos que usen este parent. -->
+    <repositories>
+        <repository>
+            <id>nova-packages-read</id>
+            <url>https://maven.pkg.github.com/ahincho/nova-bom</url>
+        </repository>
+        <repository>
+            <id>nova-packages-read</id>
+            <url>https://maven.pkg.github.com/ahincho/nova-java-spring-boot-starter</url>
+        </repository>
+    </repositories>
+
     <!-- Gestión de dependencias — importa el BOM -->
     <dependencyManagement>
         <dependencies>
