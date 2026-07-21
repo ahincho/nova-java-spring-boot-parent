@@ -6,7 +6,7 @@ name: Publish Parent POM
 # causing 401 Unauthorized when reading nova-spring-boot-bom from the
 # nova-bom repo's GitHub Packages. This workflow inlines that logic so
 # the parent can be published standalone. Tracked to revert to the reusable
-# workflow once it's fixed.
+# workflow once it's fixed upstream.
 on:
   workflow_dispatch:
     inputs:
@@ -36,23 +36,12 @@ jobs:
           build-tool: maven
           packages-read-token: ${{ secrets.NOVA_PACKAGES_READ_TOKEN }}
 
-      - name: Set Maven options (skip tests, enable deploy)
-        run: |
-          mkdir -p ~/.m2
-          cat > ~/.m2/settings.xml <<EOF
-          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-                     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                     xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
-            <servers>
-              <server>
-                <id>github</id>
-                <username>${GITHUB_ACTOR}</username>
-                <password>${GITHUB_TOKEN}</password>
-              </server>
-            </servers>
-          </settings>
-          EOF
-          echo "Maven settings.xml configured for github deploy."
+      # NOTE: do NOT overwrite settings.xml here. nova-setup-java already
+      # configured <server id="nova-packages-read-bom/starter">
+      # pointing to the other Nova repos using NOVA_PACKAGES_READ_TOKEN.
+      # Overwriting it (as the inline logic below used to do) would erase
+      # the cross-repo credentials and Maven would fall back to anonymous,
+      # causing 401 from GH Packages.
 
       - name: Deploy (or publish to local on dry-run)
         env:
