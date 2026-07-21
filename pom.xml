@@ -19,7 +19,7 @@
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <!-- Nova Platform -->
-        <nova-bom.version>1.0.0</nova-bom.version>
+        <nova-bom.version>1.0.1</nova-bom.version>
         <nova-starter.version>1.0.1</nova-starter.version>
         <!-- Plugins -->
         <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
