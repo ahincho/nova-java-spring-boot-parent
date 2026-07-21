@@ -1,10 +1,12 @@
 name: Publish Parent POM
 
-# Manually triggered publish for nova-spring-boot-parent. The release-please
-# pipeline has not been wired to this repo yet (it relies on tag-driven
-# publish-on-tag flow used by other repos; tracked separately). This workflow
-# supports manual 1.0.x bumps in the meantime so Gradle/Maven consumers
-# (e.g. instances/ms-course, instances/ms-forum) can resolve the parent.
+# Manually triggered publish for nova-spring-boot-parent. The reusable
+# workflow ahincho/nova-devops/.github/workflows/reusable-publish-maven.yml@main
+# has a gap: it doesn't forward a cross-repo read token to nova-setup-java,
+# causing 401 Unauthorized when reading nova-spring-boot-bom from the
+# nova-bom repo's GitHub Packages. This workflow inlines that logic so
+# the parent can be published standalone. Tracked to revert to the reusable
+# workflow once it's fixed.
 on:
   workflow_dispatch:
     inputs:
@@ -16,8 +18,49 @@ on:
 
 jobs:
   publish:
-    uses: ahincho/nova-devops/.github/workflows/reusable-publish-maven.yml@main
-    with:
-      dry-run: ${{ inputs.dry-run || 'false' }}
-    secrets:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Nova Setup Java
+        uses: ahincho/nova-devops/.github/actions/nova-setup-java@main
+        with:
+          java-version: '25'
+          build-tool: maven
+          packages-read-token: ${{ secrets.NOVA_PACKAGES_READ_TOKEN }}
+
+      - name: Set Maven options (skip tests, enable deploy)
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml <<EOF
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                     xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <servers>
+              <server>
+                <id>github</id>
+                <username>${GITHUB_ACTOR}</username>
+                <password>${GITHUB_TOKEN}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+          echo "Maven settings.xml configured for github deploy."
+
+      - name: Deploy (or publish to local on dry-run)
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ inputs.dry-run }}" = "true" ]; then
+            mvn deploy -DskipTests -DaltDeploymentRepository=local::file:./target/dryrun-repo
+          else
+            mvn deploy -DskipTests
+          fi
