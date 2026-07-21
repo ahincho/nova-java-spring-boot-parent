@@ -1,0 +1,23 @@
+name: Publish Parent POM
+
+# Manually triggered publish for nova-spring-boot-parent. The release-please
+# pipeline has not been wired to this repo yet (it relies on tag-driven
+# publish-on-tag flow used by other repos; tracked separately). This workflow
+# supports manual 1.0.x bumps in the meantime so Gradle/Maven consumers
+# (e.g. instances/ms-course, instances/ms-forum) can resolve the parent.
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Dry-run: deploy to local file:// repo for verification'
+        required: false
+        type: string
+        default: 'false'
+
+jobs:
+  publish:
+    uses: ahincho/nova-devops/.github/workflows/reusable-publish-maven.yml@main
+    with:
+      dry-run: ${{ inputs.dry-run || 'false' }}
+    secrets:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
