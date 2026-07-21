@@ -29,19 +29,42 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Nova Setup Java
+      - name: Nova Setup Java (cross-repo reads via NOVA_PACKAGES_READ_TOKEN)
         uses: ahincho/nova-devops/.github/actions/nova-setup-java@main
         with:
           java-version: '25'
           build-tool: maven
           packages-read-token: ${{ secrets.NOVA_PACKAGES_READ_TOKEN }}
 
-      # NOTE: do NOT overwrite settings.xml here. nova-setup-java already
-      # configured <server id="nova-packages-read-bom/starter">
-      # pointing to the other Nova repos using NOVA_PACKAGES_READ_TOKEN.
-      # Overwriting it (as the inline logic below used to do) would erase
-      # the cross-repo credentials and Maven would fall back to anonymous,
-      # causing 401 from GH Packages.
+      # nova-setup-java configured <server id="nova-packages-read-bom/starter">
+      # for cross-repo reads. But the <server id="github"> it set up uses the
+      # same EFFECTIVE_TOKEN (read-only). For deploy we need GITHUB_TOKEN
+      # (write:packages). Append a <server id="github"> entry with the
+      # write-capable token WITHOUT touching the cross-repo ones.
+
+      - name: Configure github deploy server (GITHUB_TOKEN has write:packages)
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # sed: replace only the <server> block whose <id>github</id>, leave
+          # nova-packages-read-* untouched. Using Python here because sed
+          # multi-line in-place edits are messy.
+          python3 - <<'PYEOF'
+          import re, os, pathlib
+          p = pathlib.Path(os.path.expanduser('~/.m2/settings.xml'))
+          xml = p.read_text()
+          new_server = (
+            f"  <server>\n"
+            f"    <id>github</id>\n"
+            f"    <username>{os.environ['GITHUB_ACTOR']}</username>\n"
+            f"    <password>{os.environ['GITHUB_TOKEN']}</password>\n"
+            f"  </server>"
+          )
+          xml = re.sub(r"<server>\s*<id>github</id>.*?</server>", new_server, xml, count=1, flags=re.DOTALL)
+          p.write_text(xml)
+          print("settings.xml: github server updated to GITHUB_TOKEN (write:packages)")
+          PYEOF
 
       - name: Deploy (or publish to local on dry-run)
         env:
