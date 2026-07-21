@@ -42,34 +42,45 @@ jobs:
       # (write:packages). Append a <server id="github"> entry with the
       # write-capable token WITHOUT touching the cross-repo ones.
 
-      - name: Configure github deploy server (GITHUB_TOKEN has write:packages)
+      - name: Build a clean settings.xml with all credentials
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          READ_TOKEN: ${{ secrets.NOVA_PACKAGES_READ_TOKEN }}
         run: |
-          # sed: replace only the <server> block whose <id>github</id>, leave
-          # nova-packages-read-* untouched. Using Python here because sed
-          # multi-line in-place edits are messy.
-          python3 - <<'PYEOF'
-          import re, os, pathlib
-          p = pathlib.Path(os.path.expanduser('~/.m2/settings.xml'))
-          xml = p.read_text()
-          new_server = (
-            f"  <server>\n"
-            f"    <id>github</id>\n"
-            f"    <username>{os.environ['GITHUB_ACTOR']}</username>\n"
-            f"    <password>{os.environ['GITHUB_TOKEN']}</password>\n"
-            f"  </server>"
-          )
-          xml = re.sub(r"<server>\s*<id>github</id>.*?</server>", new_server, xml, count=1, flags=re.DOTALL)
-          p.write_text(xml)
-          print("settings.xml: github server updated to GITHUB_TOKEN (write:packages)")
-          PYEOF
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml <<EOF
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                     xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <servers>
+              <server>
+                <id>github</id>
+                <username>${GITHUB_ACTOR}</username>
+                <password>${GITHUB_TOKEN}</password>
+              </server>
+              <server>
+                <id>nova-packages-read-bom</id>
+                <username>${GITHUB_ACTOR}</username>
+                <password>${READ_TOKEN}</password>
+              </server>
+              <server>
+                <id>nova-packages-read-starter</id>
+                <username>${GITHUB_ACTOR}</username>
+                <password>${READ_TOKEN}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+          echo "Maven settings.xml rebuilt with 3 servers:"
+          echo "  - github (write:packages via GITHUB_TOKEN)"
+          echo "  - nova-packages-read-{bom,starter} (read-only via NOVA_PACKAGES_READ_TOKEN)"
+          # Echo but mask the passwords
+          python3 -c "import re; print(re.sub(r'<password>[^<]*</password>', '<password>***</password>', open('/home/runner/.m2/settings.xml').read()))"
 
       - name: Deploy (or publish to local on dry-run)
         env:
           GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ "${{ inputs.dry-run }}" = "true" ]; then
             mvn deploy -DskipTests -DaltDeploymentRepository=local::file:./target/dryrun-repo
